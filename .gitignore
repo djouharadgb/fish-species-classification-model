@@ -1,0 +1,7 @@
+fish_dataset/
+__pycache__/
+*.h5
+*.keras
+*.png
+*.jpg
+*.jpeg 
