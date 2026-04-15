@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TP6 — Modifications Explained</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f9fafb; color: #1a1a2e; line-height: 1.7; }
+  h1 { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 24px 32px; border-radius: 12px; margin-bottom: 8px; }
+  h2 { color: #667eea; border-left: 4px solid #667eea; padding-left: 16px; margin-top: 40px; }
+  h3 { color: #444; }
+  .card { background: white; border-radius: 10px; padding: 24px; margin: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .todo { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 6px; margin: 10px 0; font-family: monospace; font-size: 0.9em; }
+  .done { background: #d4edda; border-left: 4px solid #28a745; padding: 12px 16px; border-radius: 6px; margin: 10px 0; }
+  code { background: #f1f3f5; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: #e83e8c; }
+  pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 10px; overflow-x: auto; font-size: 0.88em; line-height: 1.6; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78em; font-weight: bold; margin-left: 8px; }
+  .badge-green { background: #d4edda; color: #155724; }
+  .badge-blue { background: #cce5ff; color: #004085; }
+  .badge-purple { background: #e2d9f3; color: #4a235a; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th { background: #667eea; color: white; padding: 10px 14px; text-align: left; }
+  td { padding: 10px 14px; border-bottom: 1px solid #e9ecef; }
+  tr:nth-child(even) { background: #f8f9ff; }
+  .summary { background: linear-gradient(135deg, #f8f9ff, #e8eaff); border: 1px solid #c5caf7; border-radius: 10px; padding: 20px; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<h1>🐟 TP6 — Fish Classification DNN<br><small style="font-size:0.6em;opacity:0.9">Completed Code — Explanations</small></h1>
+
+<p style="font-size:1.1em; color:#555;">This document explains every modification made to complete the <strong>3 TO DO sections</strong> in the notebook, and why each choice was made to maximize accuracy.</p>
+
+<!-- ==================== TO DO 1 ==================== -->
+<h2>✅ TO DO #1 — Define the Neural Network Layers (<code>__init__</code>)</h2>
+
+<div class="card">
+  <div class="todo">❌ Original: &nbsp; <code># TO DO</code> — no layers defined</div>
+  <div class="done">✅ Replaced with: 4 hidden layers with Dense + LeakyReLU + BatchNorm + Dropout</div>
+
+  <h3>Architecture chosen:</h3>
+  <pre>Flatten (128×128×3 = 49152 inputs)
+    ↓
+Dense(1024) → LeakyReLU → BatchNorm → Dropout(0.4)
+    ↓
+Dense(512)  → LeakyReLU → BatchNorm → Dropout(0.3)
+    ↓
+Dense(256)  → LeakyReLU → BatchNorm → Dropout(0.3)
+    ↓
+Dense(128)  → LeakyReLU → BatchNorm → Dropout(0.2)
+    ↓
+Dense(9, softmax)  ← output layer (9 fish classes)</pre>
+
+  <h3>Why this architecture?</h3>
+  <table>
+    <tr><th>Choice</th><th>Why</th></tr>
+    <tr><td><strong>4 hidden layers (1024→512→256→128)</strong></td><td>Pyramid structure: starts wide to capture many features, gradually narrows to combine them. More layers = more capacity to learn complex fish patterns.</td></tr>
+    <tr><td><strong>LeakyReLU</strong> instead of ReLU</td><td>Avoids the "dying ReLU" problem — neurons can still learn even when their output is negative, because LeakyReLU allows a small negative slope (0.1).</td></tr>
+    <tr><td><strong>BatchNormalization</strong> after each layer</td><td>Normalizes the outputs of each layer so training is faster and more stable. Reduces sensitivity to the initial learning rate.</td></tr>
+    <tr><td><strong>Dropout</strong> (0.4 → 0.3 → 0.3 → 0.2)</td><td>Randomly disables neurons during training to prevent overfitting. Higher dropout early (0.4) where there are more neurons, lower at the end (0.2).</td></tr>
+  </table>
+
+  <h3>The code added:</h3>
+  <pre>self.dense1 = Dense(1024, dtype="float32")
+self.relu1  = LeakyReLU(negative_slope=0.1)
+self.bn1    = BatchNormalization()
+self.drop1  = Dropout(0.4)
+
+self.dense2 = Dense(512, dtype="float32")
+self.relu2  = LeakyReLU(negative_slope=0.1)
+self.bn2    = BatchNormalization()
+self.drop2  = Dropout(0.3)
+
+self.dense3 = Dense(256, dtype="float32")
+self.relu3  = LeakyReLU(negative_slope=0.1)
+self.bn3    = BatchNormalization()
+self.drop3  = Dropout(0.3)
+
+self.dense4 = Dense(128, dtype="float32")
+self.relu4  = LeakyReLU(negative_slope=0.1)
+self.bn4    = BatchNormalization()
+self.drop4  = Dropout(0.2)</pre>
+</div>
+
+<!-- ==================== TO DO 2 ==================== -->
+<h2>✅ TO DO #2 — Forward Pass (<code>call</code> method)</h2>
+
+<div class="card">
+  <div class="todo">❌ Original: &nbsp; <code># TO DO</code> — the layers weren't called, so nothing was computed</div>
+  <div class="done">✅ Replaced with: Sequential call of all 4 layers in order</div>
+
+  <h3>What is the <code>call</code> method?</h3>
+  <p>In Keras, <code>__init__</code> just <strong>defines</strong> layers. The <code>call</code> method is what actually <strong>runs</strong> them when you pass data through the model. Without filling the TO DO here, the model was just jumping from Flatten directly to Softmax — no learning was happening in between.</p>
+
+  <h3>The code added:</h3>
+  <pre>def call(self, inputs, training=False):
+    x = self.flatten(inputs)
+
+    x = self.dense1(x)
+    x = self.relu1(x)
+    x = self.bn1(x, training=training)   # training=True during fit, False during predict
+    x = self.drop1(x, training=training) # Dropout only active during training!
+
+    x = self.dense2(x)
+    x = self.relu2(x)
+    x = self.bn2(x, training=training)
+    x = self.drop2(x, training=training)
+
+    x = self.dense3(x)
+    x = self.relu3(x)
+    x = self.bn3(x, training=training)
+    x = self.drop3(x, training=training)
+
+    x = self.dense4(x)
+    x = self.relu4(x)
+    x = self.bn4(x, training=training)
+    x = self.drop4(x, training=training)
+
+    outputs = self.classifier(x)
+    return outputs</pre>
+
+  <h3>⚠️ Important detail: <code>training=training</code></h3>
+  <p>BatchNormalization and Dropout behave <strong>differently</strong> during training vs prediction:</p>
+  <table>
+    <tr><th>Layer</th><th>During training</th><th>During prediction</th></tr>
+    <tr><td>Dropout</td><td>Randomly disables neurons</td><td>All neurons active (no dropout)</td></tr>
+    <tr><td>BatchNorm</td><td>Uses batch statistics</td><td>Uses learned running mean/variance</td></tr>
+  </table>
+  <p>Passing <code>training=training</code> ensures this switch happens automatically.</p>
+</div>
+
+<!-- ==================== TO DO 3 ==================== -->
+<h2>✅ TO DO #3 — Data Augmentation (<code>ImageDataGenerator</code>)</h2>
+
+<div class="card">
+  <div class="todo">❌ Original: &nbsp; only <code>rescale=1./255</code> — images normalized but no augmentation</div>
+  <div class="done">✅ Added 6 augmentation techniques to the training generator</div>
+
+  <h3>The code added:</h3>
+  <pre>train_datagen = ImageDataGenerator(
+    rescale=1./255,           # normalize pixel values to [0, 1]
+    rotation_range=20,         # randomly rotate ±20 degrees
+    width_shift_range=0.15,    # shift image left/right by 15%
+    height_shift_range=0.15,   # shift image up/down by 15%
+    zoom_range=0.2,            # random zoom in/out 20%
+    horizontal_flip=True,      # randomly mirror the image
+    brightness_range=[0.8, 1.2], # vary brightness ±20%
+    fill_mode='nearest'        # fill empty areas after rotation/shift
+)</pre>
+
+  <h3>Why data augmentation?</h3>
+  <p>The model sees the same 9000 images over and over during training. Without augmentation, it memorizes them instead of learning general fish features → <strong>overfitting</strong>.</p>
+  <p>Augmentation creates <strong>artificially varied versions</strong> of each image on the fly, so the model learns to recognize fish regardless of angle, position, or lighting.</p>
+
+  <table>
+    <tr><th>Technique</th><th>What it simulates</th><th>Why useful for fish</th></tr>
+    <tr><td><code>rotation_range=20</code></td><td>Camera tilted slightly</td><td>Fish can be photographed at various angles</td></tr>
+    <tr><td><code>width/height_shift</code></td><td>Fish not centered</td><td>Subject not always in the middle of photo</td></tr>
+    <tr><td><code>zoom_range=0.2</code></td><td>Different distances</td><td>Camera may be closer or further from fish</td></tr>
+    <tr><td><code>horizontal_flip</code></td><td>Mirror image</td><td>Fish facing left or right, both valid</td></tr>
+    <tr><td><code>brightness_range</code></td><td>Different lighting</td><td>Underwater, flash, natural light vary</td></tr>
+  </table>
+
+  <p><strong>Note:</strong> Augmentation is only applied to the <strong>training</strong> generator. The validation and test generators only use <code>rescale=1./255</code> — we always evaluate on clean, unmodified images.</p>
+</div>
+
+<!-- ==================== BONUS ==================== -->
+<h2>🎯 Bonus Fix — Learning Rate</h2>
+
+<div class="card">
+  <div class="todo">❌ Original: &nbsp; <code>Adam(learning_rate=0.01)</code></div>
+  <div class="done">✅ Changed to: <code>Adam(learning_rate=0.001)</code></div>
+
+  <p><code>0.01</code> is too high for a DNN on image data — the model overshoots the optimal weights and oscillates. <code>0.001</code> is the standard starting point for Adam on image classification tasks. The <code>ReduceLROnPlateau</code> callback will lower it further automatically if needed.</p>
+</div>
+
+<!-- ==================== SUMMARY ==================== -->
+<div class="summary">
+  <h2 style="margin-top:0; color:#4a235a;">📊 Summary of all changes</h2>
+  <table>
+    <tr><th>#</th><th>Location</th><th>What was done</th><th>Impact on accuracy</th></tr>
+    <tr><td>1</td><td><code>__init__</code></td><td>Added 4 Dense layers with LeakyReLU + BatchNorm + Dropout</td><td>⬆️⬆️⬆️ Major — model can now actually learn</td></tr>
+    <tr><td>2</td><td><code>call()</code></td><td>Wired all layers in the forward pass</td><td>⬆️⬆️⬆️ Critical — without this nothing worked</td></tr>
+    <tr><td>3</td><td><code>ImageDataGenerator</code></td><td>Added 6 augmentation techniques</td><td>⬆️⬆️ Reduces overfitting, better generalization</td></tr>
+    <tr><td>4</td><td><code>Adam</code> optimizer</td><td>Lowered learning rate 0.01 → 0.001</td><td>⬆️ More stable convergence</td></tr>
+  </table>
+  <p style="color:#666; margin-bottom:0;">The rest of the code (callbacks, evaluation, visualization) was already complete and did not need modification.</p>
+</div>
+
+</body>
+</html>
