@@ -1,6 +1,7 @@
 dataset/
 tf_env/
 __pycache__/
+fish_dataset/
 *.h5
 *.keras
 *.png
